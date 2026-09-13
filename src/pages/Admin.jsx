@@ -1,14 +1,42 @@
 import { useEffect, useState } from 'react'
+import { UserPlus } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
+
+const emptyNewUser = { email: '', full_name: '', role: 'auditor', password: '' }
+
+function randomPassword() {
+  return Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8)
+}
 
 export default function Admin() {
   const [users, setUsers] = useState(null)
   const [items, setItems] = useState(null)
+  const [showNewUser, setShowNewUser] = useState(false)
+  const [newUser, setNewUser] = useState({ ...emptyNewUser, password: randomPassword() })
+  const [newUserStatus, setNewUserStatus] = useState('')
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     loadUsers()
     loadItems()
   }, [])
+
+  async function createUser(e) {
+    e.preventDefault()
+    setCreating(true)
+    setNewUserStatus('')
+    const { data, error } = await supabase.functions.invoke('admin-create-user', { body: newUser })
+    setCreating(false)
+    if (error) {
+      setNewUserStatus(`Error: ${error.message}`)
+      return
+    }
+    setNewUserStatus(
+      `Created ${data.email} as ${data.role}. Temporary password: ${newUser.password} -- share it with them directly (Slack/text/verbally), they aren't emailed automatically.`
+    )
+    setNewUser({ ...emptyNewUser, password: randomPassword() })
+    loadUsers()
+  }
 
   async function loadUsers() {
     const { data } = await supabase.from('users_profiles').select('*').order('full_name')
@@ -36,8 +64,42 @@ export default function Admin() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-xl font-bold mb-1">Admin -- Users</h1>
-        <p className="text-sm text-gray-500 mb-4">Accounts are created in Supabase Auth; manage role and digest here.</p>
+        <div className="flex justify-between items-center mb-1">
+          <h1 className="text-xl font-bold">Admin -- Users</h1>
+          <button
+            onClick={() => setShowNewUser((s) => !s)}
+            className="flex items-center gap-1.5 text-sm bg-teal-600 text-white rounded-lg px-3 py-1.5"
+          >
+            <UserPlus size={15} /> Add user
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">Manage roles and digest recipients, or create a new account below.</p>
+
+        {showNewUser && (
+          <form onSubmit={createUser} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 grid grid-cols-2 gap-3">
+            <input required type="email" placeholder="Email" value={newUser.email}
+              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+              className="border rounded-lg px-2 py-1.5 text-sm" />
+            <input required placeholder="Full name" value={newUser.full_name}
+              onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+              className="border rounded-lg px-2 py-1.5 text-sm" />
+            <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+              className="border rounded-lg px-2 py-1.5 text-sm">
+              {['admin', 'reviewer', 'auditor', 'viewer'].map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <div className="flex gap-2">
+              <input required value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                className="flex-1 border rounded-lg px-2 py-1.5 text-sm font-mono" />
+              <button type="button" onClick={() => setNewUser({ ...newUser, password: randomPassword() })}
+                className="text-xs border rounded-lg px-2">regenerate</button>
+            </div>
+            <button disabled={creating} className="col-span-2 bg-teal-600 text-white rounded-lg py-2 text-sm disabled:opacity-50">
+              {creating ? 'Creating...' : 'Create account'}
+            </button>
+            {newUserStatus && <p className="col-span-2 text-xs text-gray-600">{newUserStatus}</p>}
+          </form>
+        )}
+
         {!users && <p className="text-gray-500">Loading...</p>}
         {users && (
           <table className="w-full text-sm bg-white border border-gray-200 rounded-xl overflow-hidden">

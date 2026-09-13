@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { riskLabel } from '../lib/format'
 
 export default function ReviewQueue() {
   const [audits, setAudits] = useState(null)
@@ -41,7 +42,7 @@ export default function ReviewQueue() {
               </div>
               <div className="text-right">
                 <div className="text-sm">preview score: {a.score}/100</div>
-                <span className={`risk-badge risk-${a.risk_level}`}>{a.risk_level}</span>
+                <span className={`risk-badge risk-${a.risk_level}`}>{riskLabel(a.risk_level)}</span>
               </div>
             </div>
           </Link>

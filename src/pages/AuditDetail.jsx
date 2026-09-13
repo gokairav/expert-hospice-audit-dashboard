@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Archive, ArchiveRestore } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { computeScore } from '../lib/scoring'
+import { riskLabel } from '../lib/format'
 
 export default function AuditDetail() {
   const { id } = useParams()
@@ -91,11 +93,24 @@ export default function AuditDetail() {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h1 className="text-xl font-bold">{audit.patients?.full_name} <span className="text-gray-400 text-base">({audit.patients?.mrn})</span></h1>
-          <p className="text-sm text-gray-500">{audit.audit_type} audit -- status: {audit.status}</p>
+          <p className="text-sm text-gray-500">
+            {audit.audit_type} audit -- status: {audit.status}{audit.archived ? ' (archived)' : ''}
+          </p>
         </div>
-        <div className="text-right">
-          <div className="text-lg font-bold">{preview?.score ?? audit.score}/100</div>
-          <span className={`risk-badge risk-${preview?.riskLevel ?? audit.risk_level}`}>{preview?.riskLevel ?? audit.risk_level}</span>
+        <div className="flex items-start gap-4">
+          <div className="text-right">
+            <div className="text-lg font-bold">{preview?.score ?? audit.score}/100</div>
+            <span className={`risk-badge risk-${preview?.riskLevel ?? audit.risk_level}`}>{riskLabel(preview?.riskLevel ?? audit.risk_level)}</span>
+          </div>
+          {(role === 'admin' || role === 'reviewer') && (
+            <button
+              onClick={async () => { await supabase.from('audits').update({ archived: !audit.archived }).eq('id', id); load() }}
+              title={audit.archived ? 'Unarchive' : 'Archive'}
+              className="text-gray-400 hover:text-gray-700 mt-1"
+            >
+              {audit.archived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
+            </button>
+          )}
         </div>
       </div>
 

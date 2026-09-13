@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Logo from '../components/Logo'
 
 export default function Login() {
   const { user, signIn } = useAuth()
@@ -23,8 +24,11 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 w-80">
-        <h1 className="font-bold text-lg mb-1">ATTAbot!</h1>
-        <p className="text-xs text-gray-500 mb-6">Expert Hospice Audit Console</p>
+        <div className="flex items-center gap-3 mb-1">
+          <Logo size={32} />
+          <h1 className="font-bold text-lg">ATTAbot!</h1>
+        </div>
+        <p className="text-xs text-gray-500 mb-6 uppercase tracking-wide">Audit, Tracking, Trending &amp; Accountability</p>
         <label className="block text-sm font-medium mb-1">Email</label>
         <input
           type="email" value={email} onChange={(e) => setEmail(e.target.value)}
