@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Archive, ArchiveRestore } from 'lucide-react'
+import { Archive, ArchiveRestore, RotateCcw } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { computeScore } from '../lib/scoring'
@@ -53,6 +53,23 @@ export default function AuditDetail() {
   }
 
   const preview = findings.length ? computeScore(findings, checklistItemsById) : null
+
+  async function reopenForCorrection() {
+    if (!confirm(
+      'Reopen this confirmed audit for correction? It will move back to Pending Review so you can fix the ' +
+      'wrong data, then re-confirm it. Any corrective actions already created from it will NOT be automatically ' +
+      'updated -- review those separately if the correction changes which items failed.'
+    )) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('audits')
+      .update({ status: 'pending_review', confirmed_by: null, confirmed_at: null })
+      .eq('id', id)
+    setSaving(false)
+    if (error) return setStatus(`Error: ${error.message}`)
+    setStatus('Reopened -- edit below, then Confirm audit again when correct.')
+    await load()
+  }
 
   async function saveChanges(alsoConfirm) {
     setSaving(true)
@@ -109,6 +126,16 @@ export default function AuditDetail() {
               className="text-gray-400 hover:text-gray-700 mt-1"
             >
               {audit.archived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
+            </button>
+          )}
+          {role === 'admin' && audit.status === 'confirmed' && (
+            <button
+              onClick={reopenForCorrection}
+              disabled={saving}
+              title="Reopen for correction"
+              className="text-gray-400 hover:text-amber-600 mt-1"
+            >
+              <RotateCcw size={18} />
             </button>
           )}
         </div>

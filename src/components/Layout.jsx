@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Logo from './Logo'
+import Mascot from './Mascot'
 
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'auditor', 'reviewer', 'viewer'] },
@@ -53,6 +54,9 @@ export default function Layout() {
               </NavLink>
             )
           })}
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <Mascot size={64} />
+          </div>
         </nav>
 
         <div className="px-4 py-4 border-t border-white/10 text-xs">
