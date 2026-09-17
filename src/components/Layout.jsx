@@ -24,7 +24,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex">
-      <aside className="w-64 shrink-0 bg-navy-950 text-white flex flex-col no-print">
+      <aside className="w-80 shrink-0 bg-navy-950 text-white flex flex-col no-print">
         <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
           <Logo />
           <div>
@@ -54,8 +54,8 @@ export default function Layout() {
               </NavLink>
             )
           })}
-          <div className="mt-4 pt-4 border-t border-white/10">
-            <Mascot size={64} />
+          <div className="mt-4 pt-5 border-t border-white/10 -mx-3 flex justify-center">
+            <Mascot size={240} />
           </div>
         </nav>
 
