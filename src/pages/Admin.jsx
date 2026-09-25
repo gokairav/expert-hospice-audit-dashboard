@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { UserPlus } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 
-const emptyNewUser = { email: '', full_name: '', role: 'auditor', password: '' }
+const emptyNewUser = { email: '', full_name: '', role: 'auditor', title: '', password: '' }
 
 function randomPassword() {
   return Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8)
@@ -87,6 +87,9 @@ export default function Admin() {
               className="border rounded-lg px-2 py-1.5 text-sm">
               {['admin', 'reviewer', 'auditor', 'viewer'].map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
+            <input placeholder="Job title (e.g. Director of Nursing) -- shown on audit sign-offs" value={newUser.title}
+              onChange={(e) => setNewUser({ ...newUser, title: e.target.value })}
+              className="col-span-2 border rounded-lg px-2 py-1.5 text-sm" />
             <div className="flex gap-2">
               <input required value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                 className="flex-1 border rounded-lg px-2 py-1.5 text-sm font-mono" />
@@ -104,7 +107,7 @@ export default function Admin() {
         {users && (
           <table className="w-full text-sm bg-white border border-gray-200 rounded-xl overflow-hidden">
             <thead className="bg-gray-50 text-left text-xs text-gray-500">
-              <tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Role</th><th className="p-3">Weekly digest</th></tr>
+              <tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Role</th><th className="p-3">Job title</th><th className="p-3">Weekly digest</th></tr>
             </thead>
             <tbody>
               {users.map((u) => (
@@ -115,6 +118,14 @@ export default function Admin() {
                     <select value={u.role} onChange={(e) => updateUser(u.id, { role: e.target.value })} className="border rounded-lg px-2 py-1 text-xs">
                       {['admin', 'reviewer', 'auditor', 'viewer'].map((r) => <option key={r} value={r}>{r}</option>)}
                     </select>
+                  </td>
+                  <td className="p-3">
+                    <input
+                      defaultValue={u.title ?? ''}
+                      placeholder="e.g. Director of Nursing"
+                      onBlur={(e) => e.target.value !== (u.title ?? '') && updateUser(u.id, { title: e.target.value || null })}
+                      className="border rounded-lg px-2 py-1 text-xs w-40"
+                    />
                   </td>
                   <td className="p-3">
                     <input type="checkbox" checked={u.receives_digest} onChange={(e) => updateUser(u.id, { receives_digest: e.target.checked })} />

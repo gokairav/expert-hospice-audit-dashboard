@@ -16,6 +16,7 @@ export default function AuditDetail() {
   const [actions, setActions] = useState([])
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
+  const [confirmedByProfile, setConfirmedByProfile] = useState(null)
 
   const canEdit = role === 'reviewer' || role === 'admin'
 
@@ -45,6 +46,17 @@ export default function AuditDetail() {
         .select('*, audit_findings!inner(audit_id, checklist_items(title))')
         .eq('audit_findings.audit_id', id)
       setActions(actionRows ?? [])
+
+      if (auditRow.confirmed_by) {
+        const { data: profile } = await supabase
+          .from('users_profiles')
+          .select('full_name, title')
+          .eq('id', auditRow.confirmed_by)
+          .single()
+        setConfirmedByProfile(profile ?? null)
+      }
+    } else {
+      setConfirmedByProfile(null)
     }
   }
 
@@ -113,6 +125,13 @@ export default function AuditDetail() {
           <p className="text-sm text-gray-500">
             {audit.audit_type} audit -- status: {audit.status}{audit.archived ? ' (archived)' : ''}
           </p>
+          {audit.status === 'confirmed' && confirmedByProfile && (
+            <p className="text-sm text-emerald-700 font-medium mt-1">
+              Signed off by: {confirmedByProfile.full_name}
+              {confirmedByProfile.title ? `, ${confirmedByProfile.title}` : ''}
+              {audit.confirmed_at ? ` -- ${new Date(audit.confirmed_at).toLocaleDateString()}` : ''}
+            </p>
+          )}
         </div>
         <div className="flex items-start gap-4">
           <div className="text-right">

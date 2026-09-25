@@ -20,7 +20,7 @@ export default function AuditLog() {
   async function load() {
     let query = supabase
       .from('audits')
-      .select('id, audit_type, score, risk_level, status, archived, created_at, confirmed_at, patients(full_name, mrn)')
+      .select('id, audit_type, score, risk_level, status, archived, created_at, confirmed_at, patients(full_name, mrn), signed_off_by:users_profiles!confirmed_by(full_name, title)')
       .order('created_at', { ascending: false })
     if (!showArchived) query = query.eq('archived', false)
     if (from) query = query.gte('created_at', from)
@@ -87,7 +87,7 @@ export default function AuditLog() {
               <th className="p-3">Risk</th>
               <th className="p-3">Status</th>
               <th className="p-3">Submitted</th>
-              <th className="p-3">Confirmed</th>
+              <th className="p-3">Signed Off By</th>
               {canManage && <th className="p-3 no-print"></th>}
             </tr>
           </thead>
@@ -101,7 +101,15 @@ export default function AuditLog() {
                 <td className="p-3"><span className={`risk-badge risk-${a.risk_level}`}>{riskLabel(a.risk_level)}</span></td>
                 <td className="p-3">{a.status}{a.archived ? ' (archived)' : ''}</td>
                 <td className="p-3">{new Date(a.created_at).toLocaleDateString()}</td>
-                <td className="p-3">{a.confirmed_at ? new Date(a.confirmed_at).toLocaleDateString() : '-'}</td>
+                <td className="p-3">
+                  {a.signed_off_by ? (
+                    <>
+                      {a.signed_off_by.full_name}
+                      {a.signed_off_by.title ? `, ${a.signed_off_by.title}` : ''}
+                      <span className="text-gray-400"> -- {new Date(a.confirmed_at).toLocaleDateString()}</span>
+                    </>
+                  ) : '-'}
+                </td>
                 {canManage && (
                   <td className="p-3 no-print">
                     <div className="flex gap-2">
