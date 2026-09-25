@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
+import { useAuth } from '../context/AuthContext'
 
 const empty = { full_name: '', mrn: '', primary_diagnosis: '', admission_date: '', current_bp_number: '', current_bp_end: '' }
 
@@ -25,6 +26,7 @@ function toDbShape(f) {
 }
 
 export default function Patients() {
+  const { role } = useAuth()
   const [patients, setPatients] = useState(null)
   const [form, setForm] = useState(empty)
   const [showForm, setShowForm] = useState(false)
@@ -37,8 +39,30 @@ export default function Patients() {
   }, [])
 
   async function load() {
-    const { data } = await supabase.from('patients').select('*').order('full_name')
+    // audits(count) so delete can refuse to remove a patient with real
+    // audit history -- patients.id -> audits.patient_id cascades on
+    // delete, so deleting a patient with audits would silently destroy
+    // them too, confirmed ones included.
+    const { data } = await supabase.from('patients').select('*, audits(count)').order('full_name')
     setPatients(data ?? [])
+  }
+
+  async function deletePatient(p) {
+    const auditCount = p.audits?.[0]?.count ?? 0
+    if (auditCount > 0) {
+      alert(
+        `Can't delete ${p.full_name} -- ${auditCount} audit${auditCount === 1 ? ' is' : 's are'} linked to this ` +
+        'record, and deleting the patient would permanently delete those audits too (confirmed ones included). ' +
+        'If the record just has wrong info (like a bad MRN), click the pencil to fix it instead -- that keeps the ' +
+        'audit history intact. If an audit itself is wrong, handle it in Audit Log first.'
+      )
+      return
+    }
+    if (!confirm(`Permanently delete ${p.full_name} (MRN ${p.mrn})? This cannot be undone.`)) return
+    setError('')
+    const { error } = await supabase.from('patients').delete().eq('id', p.id)
+    if (error) return setError(error.message)
+    load()
   }
 
   async function save(e) {
@@ -138,6 +162,15 @@ export default function Patients() {
                     <button onClick={() => toggleStatus(p)} className="text-xs underline text-gray-500 whitespace-nowrap">
                       {p.status === 'active' ? 'mark discharged' : 'mark active'}
                     </button>
+                    {role === 'admin' && (
+                      <button
+                        onClick={() => deletePatient(p)}
+                        title={(p.audits?.[0]?.count ?? 0) > 0 ? 'Has linked audits -- edit instead of deleting' : 'Delete patient'}
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
