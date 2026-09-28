@@ -4,20 +4,32 @@ import { supabase } from '../lib/supabaseClient'
 export default function CorrectiveActions() {
   const [actions, setActions] = useState(null)
   const [filter, setFilter] = useState('open')
+  const [error, setError] = useState('')
 
   useEffect(() => {
     load()
   }, [filter])
 
   async function load() {
+    setError('')
+    // corrective_actions has TWO foreign keys to users_profiles (owner_user_id
+    // and closed_by) -- embedding users_profiles(...) without a hint is
+    // ambiguous to PostgREST, which rejects the whole query with an error
+    // instead of data. That error was going unchecked here, silently showing
+    // "Nothing here" even when rows existed -- !owner_user_id picks the right one.
     let query = supabase
       .from('corrective_actions')
-      .select('*, audit_findings(checklist_items(title), audits(patients(full_name, mrn))), users_profiles(full_name)')
+      .select('*, audit_findings(checklist_items(title), audits(patients(full_name, mrn))), owner:users_profiles!owner_user_id(full_name)')
       .order('due_date', { ascending: true })
     if (filter === 'open') query = query.in('status', ['open', 'in_progress'])
     if (filter === 'overdue') query = query.in('status', ['open', 'in_progress']).lt('due_date', new Date().toISOString().slice(0, 10))
     if (filter === 'done') query = query.eq('status', 'done')
-    const { data } = await query
+    const { data, error } = await query
+    if (error) {
+      setError(error.message)
+      setActions([])
+      return
+    }
     setActions(data ?? [])
   }
 
@@ -49,7 +61,8 @@ export default function CorrectiveActions() {
         ))}
       </div>
 
-      {actions.length === 0 && <p className="text-gray-400">Nothing here.</p>}
+      {error && <p className="text-sm text-red-600 mb-3">Error loading corrective actions: {error}</p>}
+      {!error && actions.length === 0 && <p className="text-gray-400">Nothing here.</p>}
       <div className="space-y-2">
         {actions.map((a) => {
           const overdue = a.status !== 'done' && a.due_date && a.due_date < today
@@ -59,7 +72,7 @@ export default function CorrectiveActions() {
                 <div className="text-sm font-medium">{a.description}</div>
                 <div className="text-xs text-gray-500">
                   {a.audit_findings?.audits?.patients?.full_name} ({a.audit_findings?.audits?.patients?.mrn}) --
-                  {' '}{a.audit_findings?.checklist_items?.title} -- owner: {a.users_profiles?.full_name ?? 'unassigned'}
+                  {' '}{a.audit_findings?.checklist_items?.title} -- owner: {a.owner?.full_name ?? 'unassigned'}
                 </div>
                 <div className={`text-xs mt-1 ${overdue ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
                   due {a.due_date ?? '-'} {overdue && '(overdue)'}
