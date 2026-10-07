@@ -151,11 +151,14 @@ export default function IdgSnapshot() {
 
       {!loading && data && (
         <div>
-          <div className="mb-5 hidden print:block">
-            <h1 className="text-xl font-bold">Expert Hospice -- IDG Snapshot</h1>
-            <p className="text-sm text-gray-600">
-              {from} to {to} -- generated {new Date().toLocaleDateString()}
-            </p>
+          <div className="mb-5 hidden print:flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold">Expert Hospice -- IDG Snapshot</h1>
+              <p className="text-sm text-gray-600">
+                {from} to {to} -- generated {new Date().toLocaleDateString()}
+              </p>
+            </div>
+            <img src="/mascot-dab.png" alt="ATTAbot" className="h-24 w-auto object-contain" />
           </div>
 
           <div className="grid grid-cols-4 gap-4 mb-5">
