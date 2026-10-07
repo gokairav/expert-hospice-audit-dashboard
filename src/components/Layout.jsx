@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, Navigate } from 'react-router-dom'
 import {
-  LayoutDashboard, ClipboardCheck, BarChart3, ListChecks, FileClock, Users, Settings, LogOut, KeyRound,
+  LayoutDashboard, ClipboardCheck, BarChart3, ListChecks, FileClock, Users, Settings, LogOut, KeyRound, Presentation,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
@@ -10,6 +10,7 @@ import Mascot from './Mascot'
 
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'auditor', 'reviewer', 'viewer'] },
+  { to: '/idg-snapshot', label: 'IDG Snapshot', icon: Presentation, roles: ['admin', 'auditor', 'reviewer', 'viewer'] },
   { to: '/review-queue', label: 'Review Queue', icon: ClipboardCheck, roles: ['admin', 'reviewer'] },
   { to: '/findings', label: 'Findings', icon: BarChart3, roles: ['admin', 'auditor', 'reviewer', 'viewer'] },
   { to: '/corrective-actions', label: 'Corrective Actions', icon: ListChecks, roles: ['admin', 'auditor', 'reviewer', 'viewer'] },

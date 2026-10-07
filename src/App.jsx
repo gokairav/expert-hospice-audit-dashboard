@@ -9,6 +9,7 @@ import CorrectiveActions from './pages/CorrectiveActions'
 import AuditLog from './pages/AuditLog'
 import Patients from './pages/Patients'
 import Admin from './pages/Admin'
+import IdgSnapshot from './pages/IdgSnapshot'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Overview />} />
+        <Route path="/idg-snapshot" element={<IdgSnapshot />} />
         <Route path="/review-queue" element={<ReviewQueue />} />
         <Route path="/audits/:id" element={<AuditDetail />} />
         <Route path="/findings" element={<Findings />} />
