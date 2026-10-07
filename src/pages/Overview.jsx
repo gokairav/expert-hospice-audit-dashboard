@@ -7,9 +7,13 @@ import { riskLabel } from '../lib/format'
 
 const RISK_COLORS = { CRITICAL: '#dc2626', HIGH: '#ea580c', MEDIUM: '#ca8a04', LOW: '#16a34a' }
 
-function StatCard({ icon: Icon, label, value, tone }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+function StatCard({ icon: Icon, label, value, tone, to }) {
+  const card = (
+    <div
+      className={`bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3 ${
+        to ? 'hover:border-teal-400 hover:shadow-sm transition-shadow cursor-pointer' : ''
+      }`}
+    >
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${tone}`}>
         <Icon size={18} />
       </div>
@@ -19,6 +23,7 @@ function StatCard({ icon: Icon, label, value, tone }) {
       </div>
     </div>
   )
+  return to ? <Link to={to}>{card}</Link> : card
 }
 
 export default function Overview() {
@@ -95,10 +100,28 @@ export default function Overview() {
       <p className="text-sm text-gray-500 mb-6">QAPI snapshot -- proof of an ongoing audit program, not a one-time cleanup.</p>
 
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard icon={ClipboardList} label="Pending review" value={stats.pending} tone="bg-blue-50 text-blue-600" />
-        <StatCard icon={AlertTriangle} label="Confirmed Critical / High" value={stats.criticalHigh} tone="bg-red-50 text-red-600" />
-        <StatCard icon={Clock} label="Overdue corrective actions" value={stats.overdue} tone="bg-orange-50 text-orange-600" />
-        <StatCard icon={CheckCircle2} label="Confirmed audits total" value={stats.confirmed} tone="bg-teal-50 text-teal-600" />
+        <StatCard icon={ClipboardList} label="Pending review" value={stats.pending} tone="bg-blue-50 text-blue-600" to="/review-queue" />
+        <StatCard
+          icon={AlertTriangle}
+          label="Confirmed Critical / High"
+          value={stats.criticalHigh}
+          tone="bg-red-50 text-red-600"
+          to="/audit-log?status=confirmed&risk=CRITICAL,HIGH"
+        />
+        <StatCard
+          icon={Clock}
+          label="Overdue corrective actions"
+          value={stats.overdue}
+          tone="bg-orange-50 text-orange-600"
+          to="/corrective-actions?filter=overdue"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          label="Confirmed audits total"
+          value={stats.confirmed}
+          tone="bg-teal-50 text-teal-600"
+          to="/audit-log?status=confirmed"
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-5 mb-6">

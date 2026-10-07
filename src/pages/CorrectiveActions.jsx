@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 
+const FILTERS = ['open', 'overdue', 'done', 'all']
+
 export default function CorrectiveActions() {
+  const [searchParams] = useSearchParams()
+  // Deep-linked from the Overview "Overdue corrective actions" stat card
+  // (/corrective-actions?filter=overdue) -- only read once as the initial
+  // tab, same as any other default; the tab buttons below don't write back
+  // to the URL, so switching tabs afterward behaves exactly as before.
+  const initialFilter = FILTERS.includes(searchParams.get('filter')) ? searchParams.get('filter') : 'open'
   const [actions, setActions] = useState(null)
-  const [filter, setFilter] = useState('open')
+  const [filter, setFilter] = useState(initialFilter)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -50,7 +59,7 @@ export default function CorrectiveActions() {
       <p className="text-sm text-gray-500 mb-4">Every confirmed Fail/Flag becomes a tracked action -- not just a line in a report.</p>
 
       <div className="flex gap-2 mb-4">
-        {['open', 'overdue', 'done', 'all'].map((f) => (
+        {FILTERS.map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}

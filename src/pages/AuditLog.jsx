@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Archive, ArchiveRestore, Trash2, Printer } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Archive, ArchiveRestore, Trash2, Printer, X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { riskLabel } from '../lib/format'
 
 export default function AuditLog() {
   const { role } = useAuth()
+  const [searchParams] = useSearchParams()
+  // Deep-linked from the Overview stat cards (e.g. "Confirmed Critical /
+  // High" -> /audit-log?status=confirmed&risk=CRITICAL,HIGH) -- applied
+  // server-side alongside the existing filters, not just client-side on
+  // `filtered`, so it behaves the same as every other filter here.
+  const statusFilter = searchParams.get('status') ?? ''
+  const riskFilter = (searchParams.get('risk') ?? '').split(',').filter(Boolean)
+  const hasLinkedFilter = statusFilter || riskFilter.length > 0
   const [audits, setAudits] = useState(null)
   const [search, setSearch] = useState('')
   const [from, setFrom] = useState('')
@@ -15,7 +23,7 @@ export default function AuditLog() {
 
   useEffect(() => {
     load()
-  }, [from, to, showArchived])
+  }, [from, to, showArchived, statusFilter, searchParams.get('risk')])
 
   async function load() {
     let query = supabase
@@ -25,6 +33,8 @@ export default function AuditLog() {
     if (!showArchived) query = query.eq('archived', false)
     if (from) query = query.gte('created_at', from)
     if (to) query = query.lte('created_at', to + 'T23:59:59')
+    if (statusFilter) query = query.eq('status', statusFilter)
+    if (riskFilter.length) query = query.in('risk_level', riskFilter)
     const { data } = await query
     setAudits(data ?? [])
   }
@@ -59,6 +69,18 @@ export default function AuditLog() {
         </button>
       </div>
       <p className="text-sm text-gray-500 mb-4 print:hidden">Full, searchable audit history.</p>
+
+      {hasLinkedFilter && (
+        <div className="flex items-center gap-2 mb-4 print:hidden text-xs bg-teal-50 border border-teal-200 text-teal-800 rounded-lg px-3 py-2 w-fit">
+          <span>
+            Filtered{statusFilter ? ` to ${statusFilter}` : ''}
+            {riskFilter.length ? ` -- risk: ${riskFilter.map(riskLabel).join(', ')}` : ''}
+          </span>
+          <Link to="/audit-log" className="flex items-center gap-1 text-teal-700 hover:text-teal-900 underline">
+            <X size={12} /> Clear
+          </Link>
+        </div>
+      )}
 
       <div className="flex gap-3 mb-4 print:hidden items-center">
         <input
