@@ -150,15 +150,12 @@ export default function IdgSnapshot() {
       {loading && <p className="text-gray-500">Loading...</p>}
 
       {!loading && data && (
-        <div>
-          <div className="mb-5 hidden print:flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold">Expert Hospice -- IDG Snapshot</h1>
-              <p className="text-sm text-gray-600">
-                {from} to {to} -- generated {new Date().toLocaleDateString()}
-              </p>
-            </div>
-            <img src="/mascot-dab.png" alt="ATTAbot" className="h-24 w-auto object-contain" />
+        <div className="print:flex print:flex-col print:h-[100vh]">
+          <div className="mb-5 hidden print:block">
+            <h1 className="text-xl font-bold">Expert Hospice -- IDG Snapshot</h1>
+            <p className="text-sm text-gray-600">
+              {from} to {to} -- generated {new Date().toLocaleDateString()}
+            </p>
           </div>
 
           <div className="grid grid-cols-4 gap-4 mb-5">
@@ -205,6 +202,21 @@ export default function IdgSnapshot() {
                 {data.overdueNow} still overdue as of today (see tile above).
               </p>
             </div>
+          </div>
+
+          {/* On screen this is a fixed, generous size at the bottom-left of
+              the page. In print, the wrapper above is capped to one page's
+              height (print:h-[100vh]) and this is the one section allowed
+              to shrink (flex-1 + min-h-0) -- so a longer findings/
+              corrective-actions list never pushes the mascot onto a second
+              printed page, it scales itself down to whatever room is left
+              instead (object-contain keeps it from distorting or clipping). */}
+          <div className="mt-8 flex justify-start print:mt-auto print:flex-1 print:min-h-0 print:overflow-hidden">
+            <img
+              src="/mascot-dab.png"
+              alt="ATTAbot"
+              className="h-56 w-auto object-contain print:h-full print:max-h-[240px] print:w-auto"
+            />
           </div>
         </div>
       )}
