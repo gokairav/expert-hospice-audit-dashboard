@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import Logo from './Logo'
+import Mascot from './Mascot'
 
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'auditor', 'reviewer', 'viewer'] },
@@ -77,26 +78,6 @@ function ChangePassword() {
   )
 }
 
-// Just the top of the mascot, cropped into a short pill-topped window so it
-// reads as peeking up over the nav rather than a full illustration eating
-// sidebar space -- full-body poses (the dab, etc.) are used contextually
-// elsewhere in the app instead (e.g. the IDG Brief panel).
-function MascotPeek() {
-  const [failed, setFailed] = useState(false)
-  if (failed) return null
-  return (
-    <div className="mt-auto pt-4 border-t border-white/10 -mx-3 flex flex-col items-center">
-      <div className="w-16 h-9 overflow-hidden rounded-t-full">
-        <img src="/mascot.png" alt="ATTAbot" className="w-full h-full object-cover object-top" onError={() => setFailed(true)} />
-      </div>
-      <div className="flex items-center gap-1.5 text-[10px] text-teal-400 mt-1.5 pb-1">
-        <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-        ATTAbot online
-      </div>
-    </div>
-  )
-}
-
 export default function Layout() {
   const { user, profile, role, loading, signOut } = useAuth()
 
@@ -135,7 +116,9 @@ export default function Layout() {
               </NavLink>
             )
           })}
-          <MascotPeek />
+          <div className="mt-4 pt-5 border-t border-white/10 -mx-3 flex justify-center">
+            <Mascot size={240} />
+          </div>
         </nav>
 
         <div className="px-4 py-4 border-t border-white/10 text-xs">
