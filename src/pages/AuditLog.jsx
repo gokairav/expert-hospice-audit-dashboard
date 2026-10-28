@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Archive, ArchiveRestore, Trash2, Printer, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Ban, Trash2, Printer, X } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { riskLabel } from '../lib/format'
@@ -40,6 +40,20 @@ export default function AuditLog() {
   }
 
   async function toggleArchive(a) {
+    // Archiving a CONFIRMED audit is functionally a soft delete: it drops
+    // out of every score/trend/report query the moment it's archived (they
+    // all already filter archived=false), while keeping the row on file --
+    // reversible, and leaves a trail for ACHC survey/QAPI review, unlike a
+    // real delete would. That's a bigger deal than archiving a still-pending
+    // draft, so it gets its own confirmation and its own wording ("void"),
+    // even though it's the same toggle underneath.
+    if (a.status === 'confirmed' && !a.archived) {
+      if (!confirm(
+        `Void this confirmed ${a.audit_type} audit for ${a.patients?.full_name}? It will be removed from scores, ` +
+        'trends, and reports everywhere in the dashboard -- same as deleting it would -- but the record stays on ' +
+        'file and can be restored later if needed. Use this for a wrong or duplicate confirmed audit.'
+      )) return
+    }
     await supabase.from('audits').update({ archived: !a.archived }).eq('id', a.id)
     load()
   }
@@ -93,7 +107,7 @@ export default function AuditLog() {
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm" />
         <label className="flex items-center gap-1.5 text-xs text-gray-600 whitespace-nowrap">
           <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-          Show archived
+          Show archived/voided
         </label>
       </div>
 
@@ -121,7 +135,7 @@ export default function AuditLog() {
                 <td className="p-3">{a.audit_type}</td>
                 <td className="p-3">{a.score ?? '-'}</td>
                 <td className="p-3"><span className={`risk-badge risk-${a.risk_level}`}>{riskLabel(a.risk_level)}</span></td>
-                <td className="p-3">{a.status}{a.archived ? ' (archived)' : ''}</td>
+                <td className="p-3">{a.status}{a.archived ? (a.status === 'confirmed' ? ' (voided)' : ' (archived)') : ''}</td>
                 <td className="p-3">{new Date(a.created_at).toLocaleDateString()}</td>
                 <td className="p-3">
                   {a.signed_off_by ? (
@@ -135,8 +149,12 @@ export default function AuditLog() {
                 {canManage && (
                   <td className="p-3 no-print">
                     <div className="flex gap-2">
-                      <button title={a.archived ? 'Unarchive' : 'Archive'} onClick={() => toggleArchive(a)} className="text-gray-400 hover:text-gray-700">
-                        {a.archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}
+                      <button
+                        title={a.archived ? 'Restore' : a.status === 'confirmed' ? 'Void (incorrect)' : 'Archive'}
+                        onClick={() => toggleArchive(a)}
+                        className="text-gray-400 hover:text-gray-700"
+                      >
+                        {a.archived ? <ArchiveRestore size={15} /> : a.status === 'confirmed' ? <Ban size={15} /> : <Archive size={15} />}
                       </button>
                       {role === 'admin' && a.status !== 'confirmed' && (
                         <button title="Delete" onClick={() => deleteAudit(a)} className="text-gray-400 hover:text-red-600">

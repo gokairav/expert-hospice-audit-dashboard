@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Archive, ArchiveRestore, RotateCcw } from 'lucide-react'
+import { Archive, ArchiveRestore, Ban, RotateCcw } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { computeScore } from '../lib/scoring'
@@ -64,6 +64,22 @@ export default function AuditDetail() {
     setFindings((prev) => prev.map((f) => (f.id === findingId ? { ...f, ...patch } : f)))
   }
 
+  // Same mechanism as AuditLog's toggleArchive (archived=false is already
+  // what every score/trend/report query filters on, so this is a reversible
+  // soft delete), with the confirmed-audit case called out explicitly since
+  // it's a bigger deal than archiving a still-pending draft.
+  async function toggleArchive() {
+    if (audit.status === 'confirmed' && !audit.archived) {
+      if (!confirm(
+        'Void this confirmed audit? It will be removed from scores, trends, and reports everywhere in the ' +
+        'dashboard -- same as deleting it would -- but the record stays on file and can be restored later if ' +
+        'needed. Use this for a wrong or duplicate confirmed audit.'
+      )) return
+    }
+    await supabase.from('audits').update({ archived: !audit.archived }).eq('id', id)
+    load()
+  }
+
   const preview = findings.length ? computeScore(findings, checklistItemsById) : null
 
   async function reopenForCorrection() {
@@ -123,7 +139,8 @@ export default function AuditDetail() {
         <div>
           <h1 className="text-xl font-bold">{audit.patients?.full_name} <span className="text-gray-400 text-base">({audit.patients?.mrn})</span></h1>
           <p className="text-sm text-gray-500">
-            {audit.audit_type} audit -- status: {audit.status}{audit.archived ? ' (archived)' : ''}
+            {audit.audit_type} audit -- status: {audit.status}
+            {audit.archived ? (audit.status === 'confirmed' ? ' (voided)' : ' (archived)') : ''}
           </p>
           {audit.status === 'confirmed' && confirmedByProfile && (
             <p className="text-sm text-emerald-700 font-medium mt-1">
@@ -140,11 +157,11 @@ export default function AuditDetail() {
           </div>
           {(role === 'admin' || role === 'reviewer') && (
             <button
-              onClick={async () => { await supabase.from('audits').update({ archived: !audit.archived }).eq('id', id); load() }}
-              title={audit.archived ? 'Unarchive' : 'Archive'}
+              onClick={toggleArchive}
+              title={audit.archived ? 'Restore' : audit.status === 'confirmed' ? 'Void (incorrect)' : 'Archive'}
               className="text-gray-400 hover:text-gray-700 mt-1"
             >
-              {audit.archived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
+              {audit.archived ? <ArchiveRestore size={18} /> : audit.status === 'confirmed' ? <Ban size={18} /> : <Archive size={18} />}
             </button>
           )}
           {role === 'admin' && audit.status === 'confirmed' && (
