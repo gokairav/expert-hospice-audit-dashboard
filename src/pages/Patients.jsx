@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Pencil, Check, X, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Pencil, Check, X, Trash2, Upload } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { parseCsv, mapConsoloRows } from '../lib/consoloImport'
 
 const empty = { full_name: '', mrn: '', primary_diagnosis: '', admission_date: '', current_bp_number: '', current_bp_end: '' }
 
@@ -33,6 +34,11 @@ export default function Patients() {
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState(empty)
   const [error, setError] = useState('')
+  const [importRows, setImportRows] = useState(null)
+  const [importError, setImportError] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importSummary, setImportSummary] = useState('')
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     load()
@@ -75,6 +81,54 @@ export default function Patients() {
     load()
   }
 
+  function handleFileSelected(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportError('')
+    setImportSummary('')
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const rows = mapConsoloRows(parseCsv(String(reader.result)))
+        if (rows.length === 0) throw new Error('No patient rows found in that file.')
+        const existingMrns = new Set(patients.map((p) => p.mrn))
+        setImportRows(rows.map((r) => ({ ...r, isNew: !existingMrns.has(r.mrn) })))
+      } catch (err) {
+        setImportError(err.message)
+        setImportRows(null)
+      }
+    }
+    reader.onerror = () => setImportError('Could not read that file.')
+    reader.readAsText(file)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function cancelImport() {
+    setImportRows(null)
+    setImportError('')
+  }
+
+  async function commitImport() {
+    setImporting(true)
+    setImportError('')
+    // Matched by MRN (unique in this table) -- an existing patient's
+    // full_name/diagnosis/admission date/BP#/status get refreshed from
+    // Consolo, a new MRN gets inserted. current_bp_end isn't in this export
+    // and isn't included here, so it's left untouched on existing rows
+    // rather than wiped to null.
+    const payload = importRows.map(({ isNew: _isNew, ...row }) => row)
+    const { error } = await supabase.from('patients').upsert(payload, { onConflict: 'mrn' })
+    setImporting(false)
+    if (error) {
+      setImportError(error.message)
+      return
+    }
+    const newCount = importRows.filter((r) => r.isNew).length
+    setImportSummary(`Imported ${importRows.length} patients -- ${newCount} new, ${importRows.length - newCount} updated.`)
+    setImportRows(null)
+    load()
+  }
+
   async function toggleStatus(p) {
     await supabase.from('patients').update({ status: p.status === 'active' ? 'discharged' : 'active' }).eq('id', p.id)
     load()
@@ -102,11 +156,78 @@ export default function Patients() {
     <div>
       <div className="flex justify-between items-center mb-1">
         <h1 className="text-xl font-bold">Patients</h1>
-        <button onClick={() => setShowForm((s) => !s)} className="text-sm bg-teal-600 text-white rounded-lg px-3 py-1.5">
-          + Add patient
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 text-sm bg-white border border-gray-300 rounded-lg px-3 py-1.5"
+          >
+            <Upload size={14} /> Import from WellSky
+          </button>
+          <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileSelected} className="hidden" />
+          <button onClick={() => setShowForm((s) => !s)} className="text-sm bg-teal-600 text-white rounded-lg px-3 py-1.5">
+            + Add patient
+          </button>
+        </div>
       </div>
-      <p className="text-sm text-gray-500 mb-4">Click the pencil on any row to fix a typo or update benefit period info.</p>
+      <p className="text-sm text-gray-500 mb-4">
+        Click the pencil on any row to fix a typo or update benefit period info, or import a Consolo "Active Patient
+        Summary" CSV export to add/refresh many at once.
+      </p>
+      {importError && <p className="text-sm text-red-600 mb-3">{importError}</p>}
+      {importSummary && <p className="text-sm text-emerald-700 mb-3">{importSummary}</p>}
+
+      {importRows && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-semibold text-sm">
+              Review before importing -- {importRows.length} patients ({importRows.filter((r) => r.isNew).length} new,{' '}
+              {importRows.filter((r) => !r.isNew).length} will be updated)
+            </h2>
+            <div className="flex gap-2">
+              <button onClick={cancelImport} className="text-xs border border-gray-300 rounded-lg px-3 py-1.5">
+                Cancel
+              </button>
+              <button
+                onClick={commitImport}
+                disabled={importing}
+                className="text-xs bg-teal-600 text-white rounded-lg px-3 py-1.5 disabled:opacity-50"
+              >
+                {importing ? 'Importing...' : `Import ${importRows.length} patients`}
+              </button>
+            </div>
+          </div>
+          <div className="max-h-80 overflow-auto">
+            <table className="w-full text-xs">
+              <thead className="text-left text-gray-500">
+                <tr>
+                  <th className="p-1.5">Name</th>
+                  <th className="p-1.5">MRN</th>
+                  <th className="p-1.5">Admitted</th>
+                  <th className="p-1.5">BP #</th>
+                  <th className="p-1.5">Status</th>
+                  <th className="p-1.5"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {importRows.map((r) => (
+                  <tr key={r.mrn} className="border-t border-gray-100">
+                    <td className="p-1.5">{r.full_name}</td>
+                    <td className="p-1.5">{r.mrn}</td>
+                    <td className="p-1.5">{r.admission_date ?? '-'}</td>
+                    <td className="p-1.5">{r.current_bp_number ?? '-'}</td>
+                    <td className="p-1.5">{r.status}</td>
+                    <td className="p-1.5">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${r.isNew ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {r.isNew ? 'new' : 'update'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
 
       {showForm && (
