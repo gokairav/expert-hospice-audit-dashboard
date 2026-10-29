@@ -90,7 +90,7 @@ export default function Layout() {
         <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
           <Logo />
           <div>
-            <div className="font-bold text-base leading-tight">ATTAbot!</div>
+            <div className="font-bold text-base leading-tight">ATTA<em>bot!</em></div>
             <div className="text-[10px] text-teal-400 leading-tight tracking-wide uppercase">
               Audit, Tracking, Trending &amp; Accountability
             </div>
